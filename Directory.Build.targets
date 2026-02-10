@@ -2,7 +2,8 @@
   <Target Name="CopyToDebugPlugins"
           AfterTargets="Build"
           Condition="
-          $([System.String]::Copy('$(MSBuildProjectName)').StartsWith('Scrubbler.Plugin'))
+          '$(Configuration)' == 'Debug'
+          and $([System.String]::Copy('$(MSBuildProjectName)').StartsWith('Scrubbler.Plugin'))
           and '$(TargetFramework)' != ''
         ">
 
@@ -15,7 +16,7 @@
     <Message Text="Copying plugin outputs to $(DebugPluginsDir)"
              Importance="High" />
 
-    <MakeDir Directories="$(DebugPluginsDir)" />
+    <MakeDir Directories="$(DebugPluginsDir)" ContinueOnError="WarnAndContinue"/>
 
     <ItemGroup>
       <AllOutputs Include="$(TargetDir)*.dll" />
@@ -27,6 +28,10 @@
 
     <Copy SourceFiles="@(AllOutputs)"
           DestinationFolder="$(DebugPluginsDir)"
-          SkipUnchangedFiles="true" />
+          SkipUnchangedFiles="true"
+          ContinueOnError="WarnAndContinue"/>
+
+    <Warning Condition="!Exists('$(DebugPluginsDir)')"
+             Text="Debug plugin copy skipped/failed: destination does not exist: $(DebugPluginsDir)" />
   </Target>
 </Project>
