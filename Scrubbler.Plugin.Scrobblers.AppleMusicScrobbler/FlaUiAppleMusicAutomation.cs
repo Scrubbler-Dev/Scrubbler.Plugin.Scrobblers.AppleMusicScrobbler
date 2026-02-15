@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.UIA3;
+using Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
 

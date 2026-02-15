@@ -4,9 +4,10 @@ using Scrubbler.Abstractions.Plugin;
 using Scrubbler.Abstractions.Plugin.Account;
 using Scrubbler.Abstractions.Services;
 using Scrubbler.Abstractions.Settings;
+using Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
 using Shoegaze.LastFM;
 
-namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 [PluginMetadata(
     Name = "Apple Music Scrobbler",

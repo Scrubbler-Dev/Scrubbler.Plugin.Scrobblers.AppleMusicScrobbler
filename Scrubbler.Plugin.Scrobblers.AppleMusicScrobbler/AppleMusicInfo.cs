@@ -1,4 +1,4 @@
-namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 internal class AppleMusicInfo(string songName, string songAlbumArtist, string songAlbum, string songArtist) : IEquatable<AppleMusicInfo>
 {

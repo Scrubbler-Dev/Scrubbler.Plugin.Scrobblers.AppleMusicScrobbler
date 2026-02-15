@@ -1,4 +1,4 @@
-namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 internal static class PluginDefaults
 {

@@ -4,7 +4,7 @@ using Scrubbler.Abstractions.Services;
 using Scrubbler.Plugins.Scrobblers.MediaPlayerScrobbleBase;
 using Shoegaze.LastFM;
 
-namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 internal partial class AppleMusicScrobbleViewModel : MediaPlayerScrobblePluginViewModelBase
 {

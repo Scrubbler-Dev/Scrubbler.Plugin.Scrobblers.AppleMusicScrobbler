@@ -1,6 +1,6 @@
 using Scrubbler.Abstractions.Settings;
 
-namespace Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
 internal class PluginSettings : IPluginSettings
 {

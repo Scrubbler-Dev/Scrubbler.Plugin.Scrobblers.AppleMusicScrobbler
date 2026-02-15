@@ -1,7 +1,7 @@
 using Moq;
 using Scrubbler.Abstractions;
 using Scrubbler.Abstractions.Services;
-using Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+using Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 using Shoegaze.LastFM;
 
 namespace Scrubbler.Test.AppleMusicScrobblerTest;
