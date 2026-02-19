@@ -1,6 +1,8 @@
 using MediaPlayerScrobblerBase;
 using Scrubbler.Abstractions;
 using Scrubbler.Abstractions.Services;
+using Scrubbler.MediaPlayerScrobblerBase;
+using Scrubbler.PluginBase.Discord;
 using Scrubbler.Plugins.Scrobblers.MediaPlayerScrobbleBase;
 using Shoegaze.LastFM;
 
@@ -42,8 +44,8 @@ internal partial class AppleMusicScrobbleViewModel : MediaPlayerScrobblePluginVi
     #region Construction
 
     public AppleMusicScrobbleViewModel(ILastfmClient lastfmClient, ILogService logger, IAppleMusicAutomation automation,
-                                       ITickSource refreshTicks, ITickSource countTicks)
-        : base(lastfmClient, logger)
+                                       ITickSource refreshTicks, ITickSource countTicks, IDiscordRichPresence discordRichPresence)
+        : base(lastfmClient, discordRichPresence, new DiscordRichPresenceData("apple_music", "Apple Music", "scrubbler", "Scrubbler"), logger)
     {
         _automation = automation;
         _refreshTicks = refreshTicks;

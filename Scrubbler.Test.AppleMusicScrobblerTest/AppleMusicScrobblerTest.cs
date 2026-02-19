@@ -2,6 +2,7 @@ using Moq;
 using Scrubbler.Abstractions;
 using Scrubbler.Abstractions.Services;
 using Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
+using Scrubbler.PluginBase.Discord;
 using Shoegaze.LastFM;
 
 namespace Scrubbler.Test.AppleMusicScrobblerTest;
@@ -9,220 +10,223 @@ namespace Scrubbler.Test.AppleMusicScrobblerTest;
 [TestFixture]
 public class Tests
 {
-    private Mock<ILastfmClient> _lastfmClient = null!;
-    private Mock<ILogService> _logger = null!;
-    private Mock<IAppleMusicAutomation> _automation = null!;
+  private Mock<ILastfmClient> _lastfmClient = null!;
+  private Mock<ILogService> _logger = null!;
+  private Mock<IDiscordRichPresence> _discordRP = null!;
+  private Mock<IAppleMusicAutomation> _automation = null!;
 
-    private ManualTickSource _refreshTicks = null!;
-    private ManualTickSource _countTicks = null!;
+  private ManualTickSource _refreshTicks = null!;
+  private ManualTickSource _countTicks = null!;
 
-    private AppleMusicScrobbleViewModel _vm = null!;
+  private AppleMusicScrobbleViewModel _vm = null!;
 
-    private readonly AppleMusicInfo _song =
-        new("Track", "Artist", "Album", "Artist")
-        {
-            SongDuration = 100
-        };
+  private readonly AppleMusicInfo _song =
+      new("Track", "Artist", "Album", "Artist")
+      {
+        SongDuration = 100
+      };
 
-    [SetUp]
-    public void Setup()
+  [SetUp]
+  public void Setup()
+  {
+    _lastfmClient = new Mock<ILastfmClient>();
+    _logger = new Mock<ILogService>();
+    _automation = new Mock<IAppleMusicAutomation>(MockBehavior.Strict);
+    _discordRP = new Mock<IDiscordRichPresence>();
+
+    _refreshTicks = new ManualTickSource();
+    _countTicks = new ManualTickSource();
+
+    _vm = new AppleMusicScrobbleViewModel(
+        _lastfmClient.Object,
+        _logger.Object,
+        _automation.Object,
+        _refreshTicks,
+        _countTicks,
+        _discordRP.Object);
+  }
+
+  [TearDown]
+  public void TearDown()
+  {
+    _refreshTicks.Dispose();
+    _countTicks.Dispose();
+  }
+
+  [Test]
+  public async Task Connect_initializes_state_and_connects_automation()
+  {
+    _automation.Setup(a => a.Connect());
+
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+
+    _automation.Verify(a => a.Connect(), Times.Once);
+    using (Assert.EnterMultipleScope())
     {
-        _lastfmClient = new Mock<ILastfmClient>();
-        _logger = new Mock<ILogService>();
-        _automation = new Mock<IAppleMusicAutomation>(MockBehavior.Strict);
-
-        _refreshTicks = new ManualTickSource();
-        _countTicks = new ManualTickSource();
-
-        _vm = new AppleMusicScrobbleViewModel(
-            _lastfmClient.Object,
-            _logger.Object,
-            _automation.Object,
-            _refreshTicks,
-            _countTicks);
+      Assert.That(_vm.IsConnected, Is.True);
+      Assert.That(_vm.CurrentTrackScrobbled, Is.False);
+      Assert.That(_vm.CountedSeconds, Is.Zero);
     }
+  }
 
-    [TearDown]
-    public void TearDown()
+  [Test]
+  public async Task RefreshTick_sets_current_song()
+  {
+    _automation.Setup(a => a.Connect());
+    _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
+
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+
+    _refreshTicks.Fire();
+
+    using (Assert.EnterMultipleScope())
     {
-        _refreshTicks.Dispose();
-        _countTicks.Dispose();
+      Assert.That(_vm.CurrentTrackName, Is.EqualTo(_song.SongName));
+      Assert.That(_vm.CurrentArtistName, Is.EqualTo(_song.SongArtist));
+      Assert.That(_vm.CurrentAlbumName, Is.EqualTo(_song.SongAlbum));
     }
+  }
 
-    [Test]
-    public async Task Connect_initializes_state_and_connects_automation()
+  [Test]
+  public async Task RefreshTick_song_change_resets_counters()
+  {
+    var song2 = new AppleMusicInfo("Other", "Artist", "Album", "Artist")
     {
-        _automation.Setup(a => a.Connect());
+      SongDuration = 200
+    };
 
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+    _automation.Setup(a => a.Connect());
+    _automation.SetupSequence(a => a.GetCurrentSong())
+        .Returns(_song)
+        .Returns(song2);
 
-        _automation.Verify(a => a.Connect(), Times.Once);
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(_vm.IsConnected, Is.True);
-            Assert.That(_vm.CurrentTrackScrobbled, Is.False);
-            Assert.That(_vm.CountedSeconds, Is.Zero);
-        }
-    }
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
 
-    [Test]
-    public async Task RefreshTick_sets_current_song()
+    _refreshTicks.Fire(); // first song
+    _vm.CountedSeconds = 10;
+    _vm.CurrentTrackScrobbled = true;
+
+    _refreshTicks.Fire(); // song changed
+
+    using (Assert.EnterMultipleScope())
     {
-        _automation.Setup(a => a.Connect());
-        _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
-
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
-
-        _refreshTicks.Fire();
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(_vm.CurrentTrackName, Is.EqualTo(_song.SongName));
-            Assert.That(_vm.CurrentArtistName, Is.EqualTo(_song.SongArtist));
-            Assert.That(_vm.CurrentAlbumName, Is.EqualTo(_song.SongAlbum));
-        }
+      Assert.That(_vm.CountedSeconds, Is.Zero);
+      Assert.That(_vm.CurrentTrackScrobbled, Is.False);
+      Assert.That(_vm.CurrentTrackName, Is.EqualTo("Other"));
     }
+  }
 
-    [Test]
-    public async Task RefreshTick_song_change_resets_counters()
-    {
-        var song2 = new AppleMusicInfo("Other", "Artist", "Album", "Artist")
-        {
-            SongDuration = 200
-        };
+  [Test]
+  public async Task CountTick_increments_when_playback_advances()
+  {
+    _automation.Setup(a => a.Connect());
+    _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
 
-        _automation.Setup(a => a.Connect());
-        _automation.SetupSequence(a => a.GetCurrentSong())
-            .Returns(_song)
-            .Returns(song2);
+    _automation.SetupSequence(a => a.GetCurrentPositionSeconds())
+        .Returns(1)
+        .Returns(2)
+        .Returns(3);
 
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+    _refreshTicks.Fire();
 
-        _refreshTicks.Fire(); // first song
-        _vm.CountedSeconds = 10;
-        _vm.CurrentTrackScrobbled = true;
+    _countTicks.Fire();
+    _countTicks.Fire();
+    _countTicks.Fire();
 
-        _refreshTicks.Fire(); // song changed
+    Assert.That(_vm.CountedSeconds, Is.EqualTo(2));
+  }
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(_vm.CountedSeconds, Is.Zero);
-            Assert.That(_vm.CurrentTrackScrobbled, Is.False);
-            Assert.That(_vm.CurrentTrackName, Is.EqualTo("Other"));
-        }
-    }
+  [Test]
+  public async Task CountTick_does_not_increment_when_paused()
+  {
+    _automation.Setup(a => a.Connect());
+    _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
 
-    [Test]
-    public async Task CountTick_increments_when_playback_advances()
-    {
-        _automation.Setup(a => a.Connect());
-        _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
+    _automation.Setup(a => a.GetCurrentPositionSeconds()).Returns(5);
 
-        _automation.SetupSequence(a => a.GetCurrentPositionSeconds())
-            .Returns(1)
-            .Returns(2)
-            .Returns(3);
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+    _refreshTicks.Fire();
 
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
-        _refreshTicks.Fire();
+    _countTicks.Fire();
+    _countTicks.Fire();
+    _countTicks.Fire();
 
-        _countTicks.Fire();
-        _countTicks.Fire();
-        _countTicks.Fire();
+    Assert.That(_vm.CountedSeconds, Is.Zero);
+  }
 
-        Assert.That(_vm.CountedSeconds, Is.EqualTo(2));
-    }
+  [Test]
+  public async Task Scrobble_is_emitted_after_50_percent_played()
+  {
+    var scrobbles = new List<ScrobbleData>();
 
-    [Test]
-    public async Task CountTick_does_not_increment_when_paused()
-    {
-        _automation.Setup(a => a.Connect());
-        _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
+    _vm.ScrobblesDetected += (_, data) =>
+        scrobbles.AddRange(data);
 
-        _automation.Setup(a => a.GetCurrentPositionSeconds()).Returns(5);
+    _automation.Setup(a => a.Connect());
+    _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
 
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
-        _refreshTicks.Fire();
+    // simulate playback moving forward every tick
+    _automation.SetupSequence(a => a.GetCurrentPositionSeconds())
+        .Returns(1)
+        .Returns(2)
+        .Returns(3)
+        .Returns(4)
+        .Returns(5)
+        .Returns(6)
+        .Returns(7)
+        .Returns(8)
+        .Returns(9)
+        .Returns(10)
+        .Returns(11)
+        .Returns(12)
+        .Returns(13)
+        .Returns(14)
+        .Returns(15)
+        .Returns(16)
+        .Returns(17)
+        .Returns(18)
+        .Returns(19)
+        .Returns(20)
+        .Returns(21)
+        .Returns(22)
+        .Returns(23)
+        .Returns(24)
+        .Returns(25)
+        .Returns(26)
+        .Returns(27)
+        .Returns(28)
+        .Returns(29)
+        .Returns(30)
+        .Returns(31)
+        .Returns(32)
+        .Returns(33)
+        .Returns(34)
+        .Returns(35)
+        .Returns(36)
+        .Returns(37)
+        .Returns(38)
+        .Returns(39)
+        .Returns(40)
+        .Returns(41)
+        .Returns(42)
+        .Returns(43)
+        .Returns(44)
+        .Returns(45)
+        .Returns(46)
+        .Returns(47)
+        .Returns(48)
+        .Returns(49)
+        .Returns(50)
+        .Returns(51);
 
-        _countTicks.Fire();
-        _countTicks.Fire();
-        _countTicks.Fire();
+    await _vm.ToggleConnectionCommand.ExecuteAsync(null);
+    _refreshTicks.Fire();
 
-        Assert.That(_vm.CountedSeconds, Is.Zero);
-    }
+    for (var i = 0; i < _vm.CurrentTrackLengthToScrobble + 1; i++)
+      _countTicks.Fire();
 
-    [Test]
-    public async Task Scrobble_is_emitted_after_50_percent_played()
-    {
-        var scrobbles = new List<ScrobbleData>();
-
-        _vm.ScrobblesDetected += (_, data) =>
-            scrobbles.AddRange(data);
-
-        _automation.Setup(a => a.Connect());
-        _automation.Setup(a => a.GetCurrentSong()).Returns(_song);
-
-        // simulate playback moving forward every tick
-        _automation.SetupSequence(a => a.GetCurrentPositionSeconds())
-            .Returns(1)
-            .Returns(2)
-            .Returns(3)
-            .Returns(4)
-            .Returns(5)
-            .Returns(6)
-            .Returns(7)
-            .Returns(8)
-            .Returns(9)
-            .Returns(10)
-            .Returns(11)
-            .Returns(12)
-            .Returns(13)
-            .Returns(14)
-            .Returns(15)
-            .Returns(16)
-            .Returns(17)
-            .Returns(18)
-            .Returns(19)
-            .Returns(20)
-            .Returns(21)
-            .Returns(22)
-            .Returns(23)
-            .Returns(24)
-            .Returns(25)
-            .Returns(26)
-            .Returns(27)
-            .Returns(28)
-            .Returns(29)
-            .Returns(30)
-            .Returns(31)
-            .Returns(32)
-            .Returns(33)
-            .Returns(34)
-            .Returns(35)
-            .Returns(36)
-            .Returns(37)
-            .Returns(38)
-            .Returns(39)
-            .Returns(40)
-            .Returns(41)
-            .Returns(42)
-            .Returns(43)
-            .Returns(44)
-            .Returns(45)
-            .Returns(46)
-            .Returns(47)
-            .Returns(48)
-            .Returns(49)
-            .Returns(50)
-            .Returns(51);
-
-        await _vm.ToggleConnectionCommand.ExecuteAsync(null);
-        _refreshTicks.Fire();
-
-        for (var i = 0; i < _vm.CurrentTrackLengthToScrobble + 1; i++)
-            _countTicks.Fire();
-
-        Assert.That(scrobbles, Has.Count.EqualTo(1));
-        Assert.That(scrobbles[0].Track, Is.EqualTo("Track"));
-    }
+    Assert.That(scrobbles, Has.Count.EqualTo(1));
+    Assert.That(scrobbles[0].Track, Is.EqualTo("Track"));
+  }
 }
