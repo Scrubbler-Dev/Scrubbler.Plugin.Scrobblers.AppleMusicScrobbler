@@ -1,8 +1,8 @@
 using MediaPlayerScrobblerBase;
-using Scrubbler.Abstractions;
-using Scrubbler.Abstractions.Services;
 using Scrubbler.MediaPlayerScrobblerBase;
+using Scrubbler.PluginBase;
 using Scrubbler.PluginBase.Discord;
+using Scrubbler.PluginBase.Services;
 using Scrubbler.Plugins.Scrobblers.MediaPlayerScrobbleBase;
 using Shoegaze.LastFM;
 

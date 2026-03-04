@@ -1,4 +1,4 @@
-using Scrubbler.Abstractions.Settings;
+using Scrubbler.PluginBase.Settings;
 
 namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
 
