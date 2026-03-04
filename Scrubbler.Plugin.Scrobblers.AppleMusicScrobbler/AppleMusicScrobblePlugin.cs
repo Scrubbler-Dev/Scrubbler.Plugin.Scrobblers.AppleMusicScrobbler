@@ -1,11 +1,11 @@
 using MediaPlayerScrobblerBase;
-using Scrubbler.Abstractions;
-using Scrubbler.Abstractions.Plugin;
-using Scrubbler.Abstractions.Plugin.Account;
-using Scrubbler.Abstractions.Services;
-using Scrubbler.Abstractions.Settings;
 using Scrubbler.Plugin.Scrobbler.AppleMusicScrobbler;
+using Scrubbler.PluginBase;
 using Scrubbler.PluginBase.Discord;
+using Scrubbler.PluginBase.Plugin;
+using Scrubbler.PluginBase.Plugin.Account;
+using Scrubbler.PluginBase.Services;
+using Scrubbler.PluginBase.Settings;
 using Shoegaze.LastFM;
 
 namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
@@ -14,7 +14,7 @@ namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
     Name = "Apple Music Scrobbler",
     Description = "Automatically scrobble tracks playing in the Apple Music desktop app",
     SupportedPlatforms = PlatformSupport.Windows)]
-public class AppleMusicScrobblePlugin : Abstractions.Plugin.PluginBase, IAutoScrobblePlugin, IPersistentPlugin, IAcceptAccountFunctions
+public class AppleMusicScrobblePlugin : PluginBase.Plugin.PluginBase, IAutoScrobblePlugin, IPersistentPlugin, IAcceptAccountFunctions
 {
   #region Properties
 
