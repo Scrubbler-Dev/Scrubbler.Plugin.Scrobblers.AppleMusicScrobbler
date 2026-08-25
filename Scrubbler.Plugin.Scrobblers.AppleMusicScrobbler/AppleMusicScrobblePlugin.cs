@@ -14,13 +14,16 @@ namespace Scrubbler.Plugin.Scrobblers.AppleMusicScrobbler;
     Name = "Apple Music Scrobbler",
     Description = "Automatically scrobble tracks playing in the Apple Music desktop app",
     SupportedPlatforms = PlatformSupport.Windows)]
-public class AppleMusicScrobblePlugin : PluginBase.Plugin.PluginBase, IAutoScrobblePlugin, IPersistentPlugin, IAcceptAccountFunctions
+public class AppleMusicScrobblePlugin : PluginBase.Plugin.PluginBase, IAutoScrobblePlugin, IPersistentPlugin, IAcceptAccountFunctions, IDisposable
 {
   #region Properties
 
   private readonly ApiKeyStorage _apiKeyStorage;
   private readonly AppleMusicScrobbleViewModel _vm;
   private readonly JsonSettingsStore _settingsStore;
+  private readonly IAppleMusicAutomation _automation;
+  private readonly ITickSource _refreshTicks;
+  private readonly ITickSource _countTicks;
   private PluginSettings _settings = new();
 
   #endregion Properties
@@ -36,8 +39,11 @@ public class AppleMusicScrobblePlugin : PluginBase.Plugin.PluginBase, IAutoScrob
     var settingsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Scrubbler", "Plugins", Name);
     Directory.CreateDirectory(settingsDir);
     _settingsStore = new JsonSettingsStore(Path.Combine(settingsDir, "settings.json"));
+    _automation = new FlaUiAppleMusicAutomation();
+    _refreshTicks = new TimerTickSource(1000);
+    _countTicks = new TimerTickSource(1000);
     _vm = new AppleMusicScrobbleViewModel(new LastfmClient(_apiKeyStorage.ApiKey, _apiKeyStorage.ApiSecret), _logService,
-                                          new FlaUiAppleMusicAutomation(), new TimerTickSource(1000), new TimerTickSource(1000),
+                                          _automation, _refreshTicks, _countTicks,
                                           discordRichPresence);
   }
 
@@ -71,5 +77,12 @@ public class AppleMusicScrobblePlugin : PluginBase.Plugin.PluginBase, IAutoScrob
   public void SetAccountFunctionsContainer(AccountFunctionContainer container)
   {
     _vm.FunctionContainer = container;
+  }
+
+  public void Dispose()
+  {
+    _refreshTicks.Dispose();
+    _countTicks.Dispose();
+    _automation.Dispose();
   }
 }

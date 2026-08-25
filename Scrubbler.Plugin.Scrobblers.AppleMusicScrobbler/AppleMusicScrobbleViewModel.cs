@@ -142,36 +142,44 @@ internal partial class AppleMusicScrobbleViewModel : MediaPlayerScrobblePluginVi
     /// <param name="e">Ignored.</param>
     private void OnCountTick(object? sender, EventArgs e)
     {
-        if (_currentSong == null)
-            return;
-
-        var current = _automation.GetCurrentPositionSeconds();
-        if (current < 0)
-            return;
-
-        if (_currentSongPlayedSeconds != -1 &&
-            current != _currentSongPlayedSeconds)
+        try
         {
-            _ = UpdateNowPlaying();
+            if (_currentSong == null)
+                return;
 
-            if (++CountedSeconds == CurrentTrackLengthToScrobble &&
-                CurrentTrackScrobbled == false)
+            var current = _automation.GetCurrentPositionSeconds();
+            if (current < 0)
+                return;
+
+            if (_currentSongPlayedSeconds != -1 &&
+                current != _currentSongPlayedSeconds)
             {
-                OnScrobblesDetected([
-                    new ScrobbleData(
-                    _currentSong.SongName,
-                    _currentSong.SongArtist,
-                    DateTimeOffset.UtcNow)
+                _ = UpdateNowPlaying();
+
+                if (++CountedSeconds == CurrentTrackLengthToScrobble &&
+                    CurrentTrackScrobbled == false)
                 {
-                    Album = _currentSong.SongAlbum,
-                    AlbumArtist = _currentSong.SongAlbumArtist
+                    OnScrobblesDetected([
+                        new ScrobbleData(
+                        _currentSong.SongName,
+                        _currentSong.SongArtist,
+                        DateTimeOffset.UtcNow)
+                    {
+                        Album = _currentSong.SongAlbum,
+                        AlbumArtist = _currentSong.SongAlbumArtist
+                    }
+                    ]);
+
+                    CurrentTrackScrobbled = true;
                 }
-                ]);
-
-                CurrentTrackScrobbled = true;
             }
-        }
 
-        _currentSongPlayedSeconds = current;
+            _currentSongPlayedSeconds = current;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error while getting Apple Music playback position", ex);
+            _ = Disconnect();
+        }
     }
 }
